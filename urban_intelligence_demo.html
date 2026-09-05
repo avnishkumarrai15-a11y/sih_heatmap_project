@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Urban Intelligence Platform - Demo</title>
+
+<!--
+  =========================================================
+  WHAT THIS FILE IS (read this first, Avnish)
+  =========================================================
+  This is ONE file that is both the webpage AND the code.
+  - Everything between <style> tags = how things LOOK
+  - Everything between <script> tags = the LOGIC (like your C++ logic,
+    just JavaScript syntax instead)
+  - Leaflet.js is a free map library. We load it from a CDN link below,
+    same idea as #include in C++ but for the browser.
+
+  HOW TO RUN IT:
+  Just double-click this file -> opens in your browser. Done.
+  No installation needed for this demo version.
+
+  HOW TO EXPLAIN IT TO JUDGES:
+  "This simulates our bus fleet. Each bus sends GPS + detection events.
+  Our GIS layer plots these on a live map, builds a congestion heatmap,
+  and shows route delay stats -- exactly what the PS asks for."
+  =========================================================
+-->
+
+<!-- Load Leaflet's CSS (styling for the map) and JS (map logic) from CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<!-- Extra plugin just for heatmaps (Leaflet alone can't draw heatmaps) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+  #header {
+    padding: 14px 20px;
+    background: #1e293b;
+    border-bottom: 2px solid #334155;
+  }
+  #header h1 { margin: 0; font-size: 18px; color: #f97316; }
+  #header p { margin: 4px 0 0; font-size: 13px; color: #94a3b8; }
+
+  #stats {
+    display: flex;
+    gap: 16px;
+    padding: 12px 20px;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    flex-wrap: wrap;
+  }
+  .stat-box {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 8px 14px;
+    min-width: 130px;
+  }
+  .stat-box .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+  .stat-box .value { font-size: 20px; font-weight: bold; color: #38bdf8; }
+
+  #controls {
+    padding: 10px 20px;
+    background: #1e293b;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    border-bottom: 1px solid #334155;
+  }
+  button {
+    background: #f97316;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:hover { background: #ea580c; }
+  button.secondary { background: #334155; }
+  button.secondary:hover { background: #475569; }
+
+  #map { height: 560px; width: 100%; }
+
+  #log {
+    height: 140px;
+    overflow-y: auto;
+    background: #0f172a;
+    padding: 10px 20px;
+    font-size: 12px;
+    font-family: monospace;
+    border-top: 1px solid #334155;
+  }
+  #log div { padding: 2px 0; color: #94a3b8; }
+  #log div.alert { color: #f87171; font-weight: bold; }
+  #log div.pothole { color: #fbbf24; }
+</style>
+</head>
+
+<body>
+
+<div id="header">
+  <h1>Urban Intelligence Platform — Live Fleet Demo</h1>
+  <p>Simulated bus fleet | GPS events | Road defect + congestion detection | Jaipur route sample</p>
+</div>
+
+<!-- Quick stat cards -- these update live as the simulation runs -->
+<div id="stats">
+  <div class="stat-box"><div class="label">Active buses</div><div class="value" id="stat-buses">0</div></div>
+  <div class="stat-box"><div class="label">Potholes detected</div><div class="value" id="stat-potholes">0</div></div>
+  <div class="stat-box"><div class="label">Incidents flagged</div><div class="value" id="stat-incidents">0</div></div>
+  <div class="stat-box"><div class="label">Avg route delay</div><div class="value" id="stat-delay">0 min</div></div>
+</div>
+
+<div id="controls">
+  <button onclick="startSimulation()">Start simulation</button>
+  <button class="secondary" onclick="resetSimulation()">Reset</button>
+  <button class="secondary" onclick="toggleHeatmap()">Toggle congestion heatmap</button>
+</div>
+
+<div id="map"></div>
+
+<div id="log"><div>Simulation log will appear here once you click "Start simulation"...</div></div>
+
+<script>
+/* =========================================================
+   STEP 1: Set up the base map
+   =========================================================
+   L.map() creates the map, .setView() centers it on Jaipur
+   with a zoom level (higher number = more zoomed in).
+*/
+const map = L.map('map').setView([26.9124, 75.7873], 13); // Jaipur coordinates
+
+// This adds the actual visual map tiles (like Google Maps background)
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors',
+  className: 'map-tiles'
+}).addTo(map);
+
+
+/* =========================================================
+   STEP 2: Define a fake bus route
+   =========================================================
+   In real life this comes from actual bus GPS. Here we hand-write
+   a list of [lat, long] points along a route through Jaipur so we
+   can animate a bus moving along it.
+*/
+const busRoute = [
+  [26.9124, 75.7873], // Start: near Albert Hall
+  [26.9155, 75.7900],
+  [26.9200, 75.7950],
+  [26.9260, 75.8010],
+  [26.9310, 75.8080],
+  [26.9350, 75.8150],
+  [26.9200, 75.8200], // Loop back
+  [26.9100, 75.8100],
+  [26.9050, 75.7980],
+  [26.9124, 75.7873]  // Back to start
+];
+
+// Expected time (in minutes) this route SHOULD take -- used to calculate "delay"
+const expectedRouteMinutes = 8;
+
+/* =========================================================
+   STEP 3: Data structures to hold our simulated events
+   =========================================================
+   Just like you'd use a struct/array in C++, these arrays hold
+   our live data as the simulation runs.
+*/
+let busMarkers = {};       // one marker per bus, keyed by bus ID
+let heatPoints = [];       // stores [lat, long, intensity] for heatmap
+let heatLayer = null;
+let potholeCount = 0;
+let incidentCount = 0;
+let simulationRunning = false;
+let routeStartTime = null;
+
+// Icons for different event types on the map
+function makeIcon(emoji, color) {
+  return L.divIcon({
+    html: `<div style="background:${color}; border-radius:50%; width:26px; height:26px;
+           display:flex; align-items:center; justify-content:center; font-size:14px;
+           border:2px solid white;">${emoji}</div>`,
+    className: '', iconSize: [26, 26]
+  });
+}
+const busIcon = makeIcon('🚌', '#38bdf8');
+const potholeIcon = makeIcon('⚠️', '#fbbf24');
+const incidentIcon = makeIcon('🚨', '#f87171');
+
+
+/* =========================================================
+   STEP 4: Logging helper -- writes messages to the on-screen log
+   =========================================================
+*/
+function log(msg, type) {
+  const logDiv = document.getElementById('log');
+  const entry = document.createElement('div');
+  if (type) entry.className = type;
+  const time = new Date().toLocaleTimeString();
+  entry.textContent = `[${time}] ${msg}`;
+  logDiv.appendChild(entry);
+  logDiv.scrollTop = logDiv.scrollHeight; // auto-scroll to newest
+}
+
+function updateStats() {
+  document.getElementById('stat-buses').textContent = Object.keys(busMarkers).length;
+  document.getElementById('stat-potholes').textContent = potholeCount;
+  document.getElementById('stat-incidents').textContent = incidentCount;
+
+  if (routeStartTime) {
+    const elapsedMin = (Date.now() - routeStartTime) / 60000;
+    const delay = Math.max(0, (elapsedMin - expectedRouteMinutes)).toFixed(1);
+    document.getElementById('stat-delay').textContent = delay + ' min';
+  }
+}
+
+
+/* =========================================================
+   STEP 5: Move a single bus step-by-step along the route
+   =========================================================
+   This is the "edge AI on a moving bus" simulation. At each point
+   along the route, there's a random chance we "detect" a pothole
+   or an incident -- mimicking what your teammates' AI models would
+   actually output in the real system.
+*/
+function animateBus(busId, routePoints, stepIndex) {
+  if (!simulationRunning) return;
+  if (stepIndex >= routePoints.length) {
+    log(`Bus ${busId} completed its route.`);
+    return;
+  }
+
+  const [lat, lng] = routePoints[stepIndex];
+
+  // Move (or create) the bus marker
+  if (!busMarkers[busId]) {
+    busMarkers[busId] = L.marker([lat, lng], { icon: busIcon }).addTo(map);
+    busMarkers[busId].bindPopup(`Bus ${busId}`);
+  } else {
+    busMarkers[busId].setLatLng([lat, lng]);
+  }
+
+  // Every point contributes a bit to the congestion heatmap
+  heatPoints.push([lat, lng, 0.4]);
+  if (heatLayer) heatLayer.setLatLngs(heatPoints);
+
+  // Simulate AI detections -- random chance per step (this is where
+  // Himanshu's real pothole-detection model output would plug in)
+  const roll = Math.random();
+  if (roll < 0.15) {
+    // Pothole detected
+    potholeCount++;
+    L.marker([lat + 0.0008, lng + 0.0008], { icon: potholeIcon })
+      .addTo(map)
+      .bindPopup(`Pothole detected<br>Confidence: ${(70 + Math.random()*25).toFixed(1)}%<br>Bus: ${busId}`);
+    log(`Bus ${busId}: pothole detected (confidence ${(70 + Math.random()*25).toFixed(0)}%)`, 'pothole');
+    heatPoints.push([lat, lng, 1.0]); // potholes weight the heatmap more
+  } else if (roll < 0.2) {
+    // Incident (e.g. rash driving / hit-and-run flag)
+    incidentCount++;
+    L.marker([lat - 0.0008, lng - 0.0008], { icon: incidentIcon })
+      .addTo(map)
+      .bindPopup(`Incident flagged<br>Type: Rash driving<br>GPS locked | Timestamp logged<br>Bus: ${busId}`);
+    log(`Bus ${busId}: INCIDENT flagged - alert sent to central platform`, 'alert');
+  }
+
+  updateStats();
+
+  // Move to next point after a short delay -- this delay is what
+  // makes it look "live" instead of instant
+  setTimeout(() => animateBus(busId, routePoints, stepIndex + 1), 1200);
+}
+
+
+/* =========================================================
+   STEP 6: Start / reset / heatmap toggle controls
+   =========================================================
+*/
+function startSimulation() {
+  if (simulationRunning) { log('Simulation already running.'); return; }
+  simulationRunning = true;
+  routeStartTime = Date.now();
+  log('Simulation started -- 3 buses dispatched on route.');
+
+  // Launch 3 buses with slightly offset starting points along the route
+  animateBus('B-101', busRoute, 0);
+  setTimeout(() => animateBus('B-102', busRoute, 2), 800);
+  setTimeout(() => animateBus('B-103', busRoute, 5), 1600);
+}
+
+function resetSimulation() {
+  simulationRunning = false;
+  Object.values(busMarkers).forEach(m => map.removeLayer(m));
+  busMarkers = {};
+  heatPoints = [];
+  if (heatLayer) heatLayer.setLatLngs([]);
+  potholeCount = 0;
+  incidentCount = 0;
+  routeStartTime = null;
+  updateStats();
+
+  // Clear all markers except the base tile layer
+  map.eachLayer(layer => {
+    if (layer instanceof L.Marker) map.removeLayer(layer);
+  });
+
+  document.getElementById('log').innerHTML = '<div>Simulation reset. Click "Start simulation" to run again.</div>';
+}
+
+function toggleHeatmap() {
+  if (heatLayer) {
+    map.removeLayer(heatLayer);
+    heatLayer = null;
+  } else {
+    heatLayer = L.heatLayer(heatPoints, { radius: 30, blur: 20, maxZoom: 15 }).addTo(map);
+  }
+}
+
+updateStats();
+</script>
+
+</body>
+</html>
