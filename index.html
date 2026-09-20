@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Urban Intelligence Platform - Prototype</title>
+
+<!--
+  =========================================================
+  STRUCTURE OF THIS PROJECT
+  =========================================================
+  index.html  -> page structure (this file) - the "skeleton"
+  style.css   -> all visual styling (black/white/blue theme)
+  script.js   -> all logic (buses, events, tabs, tables)
+
+  Keep all 3 files in the same folder. Open index.html to run.
+
+  This version has 4 TABS instead of one screen:
+    Map        -> live map with bus/defect/incident pins + heatmap
+    Dashboard  -> summary cards + traffic density + route delay report
+    Fleet      -> table listing all 40 buses and their live status
+    Incidents  -> table of every detected defect/incident, with detail view
+  =========================================================
+-->
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+
+<link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<div id="topbar">
+  <div id="topbar-title">
+    <h1>Urban Intelligence Platform</h1>
+    <p>Public Transport Fleet Sensing — Jaipur Pilot (40 buses)</p>
+  </div>
+  <div id="topbar-controls">
+    <button onclick="startSimulation()">Start simulation</button>
+    <button class="secondary" onclick="resetSimulation()">Reset</button>
+  </div>
+</div>
+
+<!-- ============ TAB NAVIGATION ============ -->
+<div id="tabs">
+  <button class="tab-btn active" onclick="showTab('map')" id="tabbtn-map">Map</button>
+  <button class="tab-btn" onclick="showTab('dashboard')" id="tabbtn-dashboard">Dashboard</button>
+  <button class="tab-btn" onclick="showTab('fleet')" id="tabbtn-fleet">Fleet Monitoring</button>
+  <button class="tab-btn" onclick="showTab('incidents')" id="tabbtn-incidents">Incidents</button>
+</div>
+
+<!-- ============ TAB: MAP ============ -->
+<div id="tab-map" class="tab-content active">
+  <div id="map-wrapper">
+    <div id="map"></div>
+    <div id="delay-badge">Avg route delay: <span id="delay-badge-value">0.0 min</span></div>
+    <button id="heatmap-toggle" class="secondary" onclick="toggleHeatmap()">Toggle congestion heatmap</button>
+  </div>
+</div>
+
+<!-- ============ TAB: DASHBOARD ============ -->
+<div id="tab-dashboard" class="tab-content">
+  <div id="summary-cards">
+    <div class="card"><div class="card-label">Active Buses</div><div class="card-value" id="dash-active-buses">0 / 40</div></div>
+    <div class="card"><div class="card-label">Road Defects</div><div class="card-value" id="dash-defects">0</div></div>
+    <div class="card"><div class="card-label">Incidents Flagged</div><div class="card-value" id="dash-incidents">0</div></div>
+    <div class="card"><div class="card-label">Avg Route Delay</div><div class="card-value" id="dash-delay">0.0 min</div></div>
+  </div>
+
+  <div id="dashboard-panels">
+    <div class="panel">
+      <h3>Traffic Density by Route</h3>
+      <p class="panel-note">Simulated vehicle counts per route, used to flag congestion bottlenecks.</p>
+      <div id="traffic-panel-list"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Route Delay Report</h3>
+      <p class="panel-note">Expected vs. current delay per route (delay grows as defects/incidents are detected).</p>
+      <table id="delay-report-table">
+        <thead><tr><th>Route</th><th>Buses</th><th>Delay</th></tr></thead>
+        <tbody id="delay-report-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TAB: FLEET MONITORING ============ -->
+<div id="tab-fleet" class="tab-content">
+  <h3>Fleet Status — 40 Buses</h3>
+  <p class="panel-note">Live status of every bus in the simulated fleet. "Buffered" means the bus temporarily lost connectivity and is holding events locally until it reconnects.</p>
+  <table id="fleet-table">
+    <thead>
+      <tr><th>Bus ID</th><th>Route</th><th>Status</th><th>Sync</th><th>Last Ping</th></tr>
+    </thead>
+    <tbody id="fleet-table-body"></tbody>
+  </table>
+</div>
+
+<!-- ============ TAB: INCIDENTS ============ -->
+<div id="tab-incidents" class="tab-content">
+  <h3>Detected Events</h3>
+  <p class="panel-note">Every road defect and incident detected across the fleet. Click a row to view details.</p>
+  <table id="incidents-table">
+    <thead>
+      <tr><th>Type</th><th>Priority</th><th>Confidence</th><th>Bus</th><th>Route</th><th>Time</th><th>Sync</th></tr>
+    </thead>
+    <tbody id="incidents-table-body"></tbody>
+  </table>
+</div>
+
+<!-- ============ DETAIL MODAL (shown when an incident row is clicked) ============ -->
+<div id="detail-modal" class="modal-overlay">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

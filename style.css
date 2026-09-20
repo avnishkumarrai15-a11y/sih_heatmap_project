@@ -1,0 +1,231 @@
+/* =========================================================
+   THEME: black (header/nav), white (content background), blue (accents)
+   Priority colors (red/amber/green) are kept as an exception --
+   those are a universal safety convention, not a style choice.
+   ========================================================= */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f4f6f9;   /* light gray-white content background */
+  color: #1e293b;
+}
+
+/* ============ TOP BAR ============ */
+#topbar {
+  background: #0b1220;   /* near-black */
+  color: #ffffff;
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+#topbar-title h1 { margin: 0; font-size: 18px; color: #ffffff; }
+#topbar-title p { margin: 2px 0 0; font-size: 12px; color: #94a3b8; }
+
+button {
+  background: #2563eb;   /* blue accent */
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+button:hover { background: #1d4ed8; }
+button.secondary { background: #334155; }
+button.secondary:hover { background: #1e293b; }
+
+/* ============ TABS ============ */
+#tabs {
+  display: flex;
+  background: #111827;
+  padding: 0 24px;
+}
+.tab-btn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  padding: 12px 18px;
+  font-size: 13px;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+}
+.tab-btn:hover { background: #1f2937; color: #ffffff; }
+.tab-btn.active {
+  color: #ffffff;
+  border-bottom: 3px solid #2563eb; /* blue underline shows active tab */
+}
+
+.tab-content { display: none; padding: 20px; }
+.tab-content.active { display: block; }
+
+/* ============ MAP TAB ============ */
+#map-wrapper { position: relative; }
+#map { height: 560px; width: 100%; border-radius: 8px; overflow: hidden; }
+
+#delay-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #1d4ed8;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+#heatmap-toggle {
+  position: absolute;
+  top: 12px;
+  left: 60px;
+  z-index: 1000;
+}
+
+.event-icon {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid white;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+}
+
+/* ============ DASHBOARD TAB ============ */
+#summary-cards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #2563eb; /* blue accent stripe */
+  border-radius: 8px;
+  padding: 14px 18px;
+  min-width: 160px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.card-label { font-size: 11px; color: #64748b; text-transform: uppercase; }
+.card-value { font-size: 24px; font-weight: bold; color: #0b1220; }
+
+#dashboard-panels {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px 20px;
+  flex: 1;
+  min-width: 320px;
+}
+.panel h3 { margin: 0 0 4px; color: #0b1220; }
+.panel-note { font-size: 12px; color: #64748b; margin: 0 0 12px; }
+
+/* Traffic density bars */
+.traffic-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.traffic-route-name { width: 130px; color: #1e293b; }
+.traffic-bar-track {
+  flex: 1;
+  background: #e2e8f0;
+  border-radius: 4px;
+  height: 10px;
+  overflow: hidden;
+}
+.traffic-bar-fill { height: 100%; border-radius: 4px; }
+.traffic-level-label { width: 70px; text-align: right; font-weight: bold; }
+
+/* ============ TABLES (used in Dashboard, Fleet, Incidents) ============ */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  font-size: 13px;
+}
+thead {
+  background: #0b1220;
+  color: #ffffff;
+}
+th, td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+tbody tr:hover { background: #eff6ff; cursor: pointer; }
+
+/* Status/priority/sync pill badges */
+.pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+  color: white;
+}
+.pill-high { background: #dc2626; }    /* red - keep semantic, not blue */
+.pill-medium { background: #d97706; }  /* amber */
+.pill-low { background: #16a34a; }     /* green */
+.pill-active { background: #2563eb; }  /* blue */
+.pill-offline { background: #64748b; } /* gray */
+.pill-synced { background: #16a34a; }
+.pill-buffered { background: #d97706; }
+
+/* ============ DETAIL MODAL ============ */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(11, 18, 32, 0.6);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: white;
+  border-radius: 10px;
+  padding: 20px 24px;
+  max-width: 420px;
+  width: 90%;
+  position: relative;
+}
+.modal-close {
+  position: absolute;
+  top: 8px; right: 10px;
+  background: transparent;
+  color: #64748b;
+  font-size: 20px;
+  padding: 0 6px;
+}
+.modal-close:hover { color: #0b1220; background: transparent; }
+
+/* Photo placeholder box (no real image, just a styled block) */
+.photo-placeholder {
+  background: #e2e8f0;
+  border: 1px dashed #94a3b8;
+  border-radius: 6px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 13px;
+  margin: 10px 0;
+}
